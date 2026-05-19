@@ -95,6 +95,14 @@ npm install
 npm run dev
 ```
 
+The frontend API URL is stored in `client/.env`:
+
+```env
+VITE_API_URL=http://localhost:5050
+```
+
+For production, replace that value with your deployed backend URL.
+
 The frontend usually runs on:
 
 ```text

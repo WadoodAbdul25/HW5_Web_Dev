@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 
-const TASKS_URL = "http://localhost:5050/api/tasks";
-const USERS_URL = "http://localhost:5050/api/users";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5050";
+const TASKS_URL = `${API_URL}/api/tasks`;
+const USERS_URL = `${API_URL}/api/users`;
 
 const emptyTaskForm = {
   title: "",
