@@ -4,7 +4,7 @@ TaskFlow is a simple full-stack task manager I built with React, Express, and Mo
 
 ## What It Does
 
-TaskFlow lets you create, view, edit, and delete tasks. Each task has a title, description, notes/comments, and a created date. The frontend uses a futuristic metallic dashboard style with dark colors, ash gray panels, rounded cards, and smooth hover effects.
+TaskFlow lets you enter a username and email, then create, view, edit, and delete only your own tasks. Each task has a title, description, notes/comments, and a created date. The frontend uses a futuristic metallic dashboard style with dark colors, ash gray panels, rounded cards, and smooth hover effects.
 
 ## Technologies Used
 
@@ -21,9 +21,10 @@ TaskFlow lets you create, view, edit, and delete tasks. Each task has a title, d
 ## Features
 
 - Add new tasks
-- View all saved tasks
-- Edit task title, description, and notes
-- Delete tasks
+- View saved tasks for the current user
+- Edit task title, description, and notes inside the task card
+- Delete your own tasks
+- Save a simple username and email profile
 - Store data in MongoDB Atlas
 - Responsive dashboard layout
 - Beginner-friendly code structure
@@ -35,8 +36,10 @@ server/
   server.js
   models/
     Task.js
+    User.js
   routes/
     tasks.js
+    users.js
   .env
   .gitignore
   package.json
@@ -79,7 +82,7 @@ npm run dev
 The backend runs on:
 
 ```text
-http://localhost:5000
+http://localhost:5050
 ```
 
 ## Install and Run the Frontend
@@ -102,10 +105,11 @@ http://localhost:5173
 
 | Method | Route | What it does |
 | --- | --- | --- |
-| GET | `/api/tasks` | Gets all tasks |
-| POST | `/api/tasks` | Creates a new task |
-| PUT | `/api/tasks/:id` | Updates a task |
-| DELETE | `/api/tasks/:id` | Deletes a task |
+| POST | `/api/users` | Creates or reuses a user by email |
+| GET | `/api/tasks?userId=USER_ID` | Gets tasks for one user |
+| POST | `/api/tasks` | Creates a new task for one user |
+| PUT | `/api/tasks/:id` | Updates one of that user's tasks |
+| DELETE | `/api/tasks/:id?userId=USER_ID` | Deletes one of that user's tasks |
 
 ## Task Data
 
@@ -116,6 +120,7 @@ Each task uses this basic schema:
   title: String,
   description: String,
   notes: String,
+  user: ObjectId,
   createdAt: Date
 }
 ```
@@ -124,7 +129,7 @@ Each task uses this basic schema:
 
 - Add a completed/not completed status
 - Add due dates and priority levels
-- Add login so each user has their own tasks
+- Add real password-based login
 - Add search and filtering
 - Add better form validation
 - Deploy the backend and frontend online

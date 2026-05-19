@@ -1,28 +1,45 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
-const API_URL = "http://localhost:5000/api/tasks";
+const TASKS_URL = "http://localhost:5050/api/tasks";
+const USERS_URL = "http://localhost:5050/api/users";
 
-const emptyForm = {
+const emptyTaskForm = {
   title: "",
   description: "",
   notes: ""
 };
 
+const emptyUserForm = {
+  username: "",
+  email: ""
+};
+
 function App() {
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem("taskflowUser");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+  const [userForm, setUserForm] = useState(emptyUserForm);
   const [tasks, setTasks] = useState([]);
-  const [formData, setFormData] = useState(emptyForm);
+  const [taskForm, setTaskForm] = useState(emptyTaskForm);
   const [editingId, setEditingId] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [editForm, setEditForm] = useState(emptyTaskForm);
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // Load tasks once when the dashboard opens.
+  // After a user is picked, every request uses that user's id to keep tasks separate.
   useEffect(() => {
-    fetchTasks();
-  }, []);
+    if (user?._id) {
+      fetchTasks(user._id);
+    }
+  }, [user]);
 
-  const fetchTasks = async () => {
+  const fetchTasks = async (userId) => {
+    setLoading(true);
+    setMessage("");
+
     try {
-      const response = await fetch(API_URL);
+      const response = await fetch(`${TASKS_URL}?userId=${userId}`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -37,33 +54,73 @@ function App() {
     }
   };
 
-  const handleChange = (event) => {
+  const handleUserChange = (event) => {
     const { name, value } = event.target;
-    setFormData((currentData) => ({
+    setUserForm((currentData) => ({
       ...currentData,
       [name]: value
     }));
   };
 
-  const handleSubmit = async (event) => {
+  const handleUserSubmit = async (event) => {
     event.preventDefault();
     setMessage("");
 
-    if (!formData.title.trim()) {
+    try {
+      const response = await fetch(USERS_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(userForm)
+      });
+
+      const savedUser = await response.json();
+
+      if (!response.ok) {
+        throw new Error(savedUser.message || "Could not save user.");
+      }
+
+      localStorage.setItem("taskflowUser", JSON.stringify(savedUser));
+      setUser(savedUser);
+      setUserForm(emptyUserForm);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+
+  const handleTaskChange = (event) => {
+    const { name, value } = event.target;
+    setTaskForm((currentData) => ({
+      ...currentData,
+      [name]: value
+    }));
+  };
+
+  const handleEditChange = (event) => {
+    const { name, value } = event.target;
+    setEditForm((currentData) => ({
+      ...currentData,
+      [name]: value
+    }));
+  };
+
+  const createTask = async (event) => {
+    event.preventDefault();
+    setMessage("");
+
+    if (!taskForm.title.trim()) {
       setMessage("A task title is required.");
       return;
     }
 
-    const url = editingId ? `${API_URL}/${editingId}` : API_URL;
-    const method = editingId ? "PUT" : "POST";
-
     try {
-      const response = await fetch(url, {
-        method,
+      const response = await fetch(TASKS_URL, {
+        method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...taskForm, userId: user._id })
       });
 
       const savedTask = await response.json();
@@ -72,17 +129,9 @@ function App() {
         throw new Error(savedTask.message || "Could not save task.");
       }
 
-      if (editingId) {
-        setTasks((currentTasks) =>
-          currentTasks.map((task) => (task._id === editingId ? savedTask : task))
-        );
-        setMessage("Task updated.");
-      } else {
-        setTasks((currentTasks) => [savedTask, ...currentTasks]);
-        setMessage("Task created.");
-      }
-
-      resetForm();
+      setTasks((currentTasks) => [savedTask, ...currentTasks]);
+      setTaskForm(emptyTaskForm);
+      setMessage("Task created.");
     } catch (error) {
       setMessage(error.message);
     }
@@ -90,7 +139,7 @@ function App() {
 
   const startEdit = (task) => {
     setEditingId(task._id);
-    setFormData({
+    setEditForm({
       title: task.title,
       description: task.description || "",
       notes: task.notes || ""
@@ -98,9 +147,44 @@ function App() {
     setMessage("");
   };
 
+  const saveEdit = async (event, taskId) => {
+    event.preventDefault();
+    setMessage("");
+
+    if (!editForm.title.trim()) {
+      setMessage("A task title is required.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${TASKS_URL}/${taskId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ ...editForm, userId: user._id })
+      });
+
+      const savedTask = await response.json();
+
+      if (!response.ok) {
+        throw new Error(savedTask.message || "Could not update task.");
+      }
+
+      setTasks((currentTasks) =>
+        currentTasks.map((task) => (task._id === taskId ? savedTask : task))
+      );
+      setEditingId(null);
+      setEditForm(emptyTaskForm);
+      setMessage("Task updated.");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+
   const deleteTask = async (taskId) => {
     try {
-      const response = await fetch(`${API_URL}/${taskId}`, {
+      const response = await fetch(`${TASKS_URL}/${taskId}?userId=${user._id}`, {
         method: "DELETE"
       });
 
@@ -113,7 +197,8 @@ function App() {
       setTasks((currentTasks) => currentTasks.filter((task) => task._id !== taskId));
 
       if (editingId === taskId) {
-        resetForm();
+        setEditingId(null);
+        setEditForm(emptyTaskForm);
       }
 
       setMessage("Task deleted.");
@@ -122,9 +207,11 @@ function App() {
     }
   };
 
-  const resetForm = () => {
-    setEditingId(null);
-    setFormData(emptyForm);
+  const switchUser = () => {
+    localStorage.removeItem("taskflowUser");
+    setUser(null);
+    setTasks([]);
+    setMessage("");
   };
 
   const formatDate = (dateValue) => {
@@ -135,6 +222,47 @@ function App() {
     });
   };
 
+  if (!user) {
+    return (
+      <main className="app-shell auth-shell">
+        <form className="task-form auth-card" onSubmit={handleUserSubmit}>
+          <p className="eyebrow">TaskFlow Access</p>
+          <h1>TaskFlow</h1>
+
+          <label>
+            Username
+            <input
+              type="text"
+              name="username"
+              value={userForm.username}
+              onChange={handleUserChange}
+              placeholder="John Doe"
+              required
+            />
+          </label>
+
+          <label>
+            Email
+            <input
+              type="email"
+              name="email"
+              value={userForm.email}
+              onChange={handleUserChange}
+              placeholder="you@example.com"
+              required
+            />
+          </label>
+
+          <button type="submit" className="primary-button">
+            Continue
+          </button>
+
+          {message && <p className="status-message">{message}</p>}
+        </form>
+      </main>
+    );
+  }
+
   return (
     <main className="app-shell">
       <section className="dashboard">
@@ -142,7 +270,15 @@ function App() {
           <div>
             <p className="eyebrow">TaskFlow Control Center</p>
             <h1>TaskFlow</h1>
-            <p className="subtitle">A clean CRUD dashboard for tracking tasks and extra notes.</p>
+          </div>
+          <div className="user-panel">
+            <div>
+              <span>{user.username}</span>
+              <p>{user.email}</p>
+            </div>
+            <button type="button" className="ghost-button" onClick={switchUser}>
+              Switch
+            </button>
           </div>
           <div className="task-count">
             <span>{tasks.length}</span>
@@ -151,14 +287,9 @@ function App() {
         </header>
 
         <section className="content-grid">
-          <form className="task-form" onSubmit={handleSubmit}>
+          <form className="task-form" onSubmit={createTask}>
             <div className="form-heading">
-              <h2>{editingId ? "Edit Task" : "Create Task"}</h2>
-              {editingId && (
-                <button type="button" className="ghost-button" onClick={resetForm}>
-                  Cancel
-                </button>
-              )}
+              <h2>Create Task</h2>
             </div>
 
             <label>
@@ -166,8 +297,8 @@ function App() {
               <input
                 type="text"
                 name="title"
-                value={formData.title}
-                onChange={handleChange}
+                value={taskForm.title}
+                onChange={handleTaskChange}
                 placeholder="Finish project wireframe"
                 required
               />
@@ -177,8 +308,8 @@ function App() {
               Description
               <textarea
                 name="description"
-                value={formData.description}
-                onChange={handleChange}
+                value={taskForm.description}
+                onChange={handleTaskChange}
                 placeholder="Short summary of what needs to be done"
                 rows="4"
               />
@@ -188,15 +319,15 @@ function App() {
               Notes / Comments
               <textarea
                 name="notes"
-                value={formData.notes}
-                onChange={handleChange}
+                value={taskForm.notes}
+                onChange={handleTaskChange}
                 placeholder="Extra details, reminders, or comments"
                 rows="4"
               />
             </label>
 
             <button type="submit" className="primary-button">
-              {editingId ? "Update Task" : "Add Task"}
+              Add Task
             </button>
 
             {message && <p className="status-message">{message}</p>}
@@ -205,7 +336,6 @@ function App() {
           <section className="task-board">
             <div className="board-heading">
               <h2>Task Cards</h2>
-              <p>Metallic dashboard view</p>
             </div>
 
             {loading ? (
@@ -216,29 +346,77 @@ function App() {
               <div className="task-list">
                 {tasks.map((task) => (
                   <article className="task-card" key={task._id}>
-                    <div className="card-topline">
-                      <span>Created {formatDate(task.createdAt)}</span>
-                    </div>
-                    <h3>{task.title}</h3>
-                    <p className="description">
-                      {task.description || "No description added yet."}
-                    </p>
-                    <div className="notes-box">
-                      <p className="notes-label">Notes / Comments</p>
-                      <p>{task.notes || "No extra notes yet."}</p>
-                    </div>
-                    <div className="card-actions">
-                      <button type="button" onClick={() => startEdit(task)}>
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="danger-button"
-                        onClick={() => deleteTask(task._id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    {editingId === task._id ? (
+                      <form className="card-edit-form" onSubmit={(event) => saveEdit(event, task._id)}>
+                        <div className="card-topline">
+                          <span>Editing card</span>
+                        </div>
+                        <label>
+                          Title
+                          <input
+                            type="text"
+                            name="title"
+                            value={editForm.title}
+                            onChange={handleEditChange}
+                            required
+                          />
+                        </label>
+                        <label>
+                          Description
+                          <textarea
+                            name="description"
+                            value={editForm.description}
+                            onChange={handleEditChange}
+                            rows="3"
+                          />
+                        </label>
+                        <label>
+                          Notes / Comments
+                          <textarea
+                            name="notes"
+                            value={editForm.notes}
+                            onChange={handleEditChange}
+                            rows="3"
+                          />
+                        </label>
+                        <div className="card-actions">
+                          <button type="submit">Save</button>
+                          <button
+                            type="button"
+                            className="ghost-button"
+                            onClick={() => setEditingId(null)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <div className="card-topline">
+                          <span>Created {formatDate(task.createdAt)}</span>
+                        </div>
+                        <h3>{task.title}</h3>
+                        <p className="description">
+                          {task.description || "No description added yet."}
+                        </p>
+                        <div className="notes-box">
+                          <p className="notes-label">Notes / Comments</p>
+                          <p>{task.notes || "No extra notes yet."}</p>
+                        </div>
+                        <div className="card-actions">
+                          <button type="button" onClick={() => startEdit(task)}>
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="danger-button"
+                            onClick={() => deleteTask(task._id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </article>
                 ))}
               </div>

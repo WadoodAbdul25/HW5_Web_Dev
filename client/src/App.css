@@ -33,6 +33,11 @@ button {
   padding: 32px;
 }
 
+.auth-shell {
+  display: grid;
+  place-items: center;
+}
+
 .dashboard {
   width: min(1180px, 100%);
   margin: 0 auto;
@@ -105,6 +110,31 @@ h2 {
   color: #abb4c3;
 }
 
+.user-panel {
+  min-width: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.user-panel span {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 800;
+}
+
+.user-panel p {
+  margin: 0;
+  color: #aeb8c7;
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
 .content-grid {
   display: grid;
   grid-template-columns: 360px 1fr;
@@ -127,6 +157,11 @@ h2 {
   position: sticky;
   top: 24px;
   padding: 22px;
+}
+
+.auth-card {
+  width: min(430px, 100%);
+  position: static;
 }
 
 .form-heading,
@@ -229,6 +264,8 @@ textarea:focus {
 }
 
 .task-card {
+  display: flex;
+  flex-direction: column;
   min-height: 286px;
   padding: 20px;
   transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
@@ -293,6 +330,16 @@ textarea:focus {
   background: linear-gradient(135deg, #b15d63, #51252b);
 }
 
+.card-edit-form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.card-edit-form label:first-of-type {
+  margin-top: 0;
+}
+
 .empty-state {
   padding: 28px;
   border: 1px dashed rgba(214, 221, 232, 0.22);
@@ -313,6 +360,10 @@ textarea:focus {
 
   .dashboard-header {
     flex-direction: column;
+  }
+
+  .user-panel {
+    width: 100%;
   }
 
   .task-form {

@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import express from "express";
 import mongoose from "mongoose";
 import taskRoutes from "./routes/tasks.js";
+import userRoutes from "./routes/users.js";
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/tasks", taskRoutes);
+app.use("/api/users", userRoutes);
 
 // The MongoDB Atlas URI stays in .env so private login details never go in the code.
 mongoose
